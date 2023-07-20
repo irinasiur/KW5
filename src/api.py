@@ -1,89 +1,73 @@
 import json
-from abc import ABC, abstractmethod
 import requests
 
-
-class API(ABC):
-    """
-    Класс для работы с API.
-    """
-
-    @abstractmethod
-    def __init__(self):
-        """
-        Магический метод для инициализации экземпляров класса.
-        """
-        pass
-
-    @abstractmethod
-    def get_page(self):
-        """
-        Метод для получения страницы со списком вакансий.
-        """
-        pass
+from src.vacancy import Vacancy
 
 
-class HeadHunterAPI(API):
+# from vacancy import Vacancy
+
+
+class HeadHunterAPI:
     """
     Класс для работы с API сайта headhunter.ru.
     """
-    get_tag: str
 
-    def __init__(self, vacancy_name: str, search_city: str):
+    def __init__(self, mylist):
         """
-        Магический метод для инициализации экземпляров класса.
+        Магический метод для инициализации экземпляров класса, класс инициализируется списком компаний.
         """
-        self.hh_vacancy_name = vacancy_name
-        self.hh_city = search_city
+        self.mylist = mylist
 
-    @staticmethod
-    def get_anything(get_tag: str) -> dict:
+    def get_vacancy_url(self) -> dict:
         """
-        Метод принимает endpoint API и возвращает json объект.
+        В методе задана переменная  site, которая содержит API endpoint, метод возвращает словарь в виде:
+        имя компании: url, по которому доступны вакансии этой компании.
         """
-        site = "https://api.hh.ru/"
-        if requests.get(site + get_tag).status_code == 200:
-            return json.loads(requests.get(site + get_tag).content.decode())
+        site = "https://api.hh.ru/employers"
+        out_dict = {}
+        params = {}
+        for company in self.mylist:
+            params = {'text': company}
+            if requests.get(site).status_code == 200:
+                out_dict[company] = json.loads(requests.get(site, params).content.decode())['items'][0]['vacancies_url']
+        return out_dict
 
-    def get_areas(self) -> dict:
+    def parse_vacancy_url(self, url: str):
         """
-        Метод для получения словаря, в котором ключем является название города,
-        значением является id этого города.
+        Получает url и возвращает  json объект.
         """
-        ar_dict = {}
-        try:
-            for k in self.get_anything("areas"):
-                for i in range(len(k['areas'])):
-                    if len(k['areas'][i]['areas']) != 0:  # Если у зоны есть внутренние зоны
-                        for j in range(len(k['areas'][i]['areas'])):
-                            ar_dict[k['areas'][i]['areas'][j]['name']] = k['areas'][i]['areas'][j]['id']
-                    else:  # Если у зоны нет внутренних зон
-                        ar_dict[k['areas'][i]['name']] = k['areas'][i]['id']
-        except TypeError:
-            print("get_tag не найден.")
-        else:
-            return ar_dict
 
-    def get_page(self) -> dict:
+        site = url
+        if requests.get(site).status_code == 200:
+            return json.loads(requests.get(site).content.decode())
+
+    def create_list_vacancies(self):
         """
-        Метод для получения страницы со списком вакансий.
-        Аргументы:
-            page - Индекс страницы, начинается с 0. Значение по умолчанию 0, т.е. первая страница
-            per_page - Количество вакансий на 1 странице, не может быть больше 100.
-        Значение по умолчанию 100, т.е. максимально возможное количество.
+        В методе мы в цикле проходим по всему словарю get_vacancy_url, получаем значения
+        (url, по которому доступны вакансии этой компании)
+        с помощью метода parse_vacancy_url получаем JSON объекты, забираем из них необходимые данные для инициализации
+        экземпляров класса Vacancy.
+        :return: список экземпляров класса Vacancy.
         """
-        try:
-            params = {
-                'text': 'NAME:' + self.hh_vacancy_name,
-                # Текст фильтра. В имени должно быть название указанной вакансии
-                'area': self.get_areas().get(self.hh_city),  # Поиск ощуществляется по вакансиям выбранного города
-                'page': 0,  # Индекс страницы поиска на HH - 0
-                'per_page': 100  # Кол-во вакансий на 1 странице
-            }
-        except AttributeError:
-            print("get_tag не найден.")
-        else:
-            req = requests.get('https://api.hh.ru/vacancies', params)  # Посылаем запрос к API
-            data = req.content.decode()  # Декодируем его ответ, чтобы Кириллица отображалась корректно
-            req.close()
-            return json.loads(data)
+        keys = self.get_vacancy_url()
+        vacancies = []
+        for k in keys:
+            json_object = self.parse_vacancy_url(keys.get(k))
+            part_to_parse = json_object["items"]
+            for i in range(len(part_to_parse)):
+                vacancy_name = part_to_parse[i]["name"] if part_to_parse[i]["name"] is not None else "0"
+                if part_to_parse[i]["salary"] == "null":
+                    min_salary = 0
+                    max_salary = 0
+                else:
+                    min_salary = part_to_parse[i]["salary"]["from"] if part_to_parse[i]["salary"]["from"] is not None else 0
+                    max_salary = part_to_parse[i]["salary"]["to"] if part_to_parse[i]["salary"]["to"] is not None else 0
+                company_name = part_to_parse[i]["employer"]["name"] \
+                    if part_to_parse[i]["employer"]["name"] is not None else "0"
+                vacancy_url = part_to_parse[i]["alternate_url"] \
+                    if part_to_parse[i]["alternate_url"] is not None else "0"
+                vacancy = Vacancy(vacancy_name, [min_salary, max_salary], company_name, vacancy_url, None)
+                vacancies.append(vacancy)
+        return vacancies
+
+
