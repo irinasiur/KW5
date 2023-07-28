@@ -56,18 +56,18 @@ class HeadHunterAPI:
             part_to_parse = json_object["items"]
             for i in range(len(part_to_parse)):
                 vacancy_name = part_to_parse[i]["name"] if part_to_parse[i]["name"] is not None else "0"
-                if part_to_parse[i]["salary"] == "null":
+                try:
+                    if part_to_parse[i]["salary"] == "null":
+                        min_salary = 0
+                        max_salary = 0
+                    else:
+                        min_salary = part_to_parse[i]["salary"]["from"] if part_to_parse[i]["salary"]["from"] is not None else 0
+                        max_salary = part_to_parse[i]["salary"]["to"] if part_to_parse[i]["salary"]["to"] is not None else 0
+                except TypeError:
                     min_salary = 0
                     max_salary = 0
-                else:
-                    min_salary = part_to_parse[i]["salary"]["from"] if part_to_parse[i]["salary"]["from"] is not None else 0
-                    max_salary = part_to_parse[i]["salary"]["to"] if part_to_parse[i]["salary"]["to"] is not None else 0
-                company_name = part_to_parse[i]["employer"]["name"] \
-                    if part_to_parse[i]["employer"]["name"] is not None else "0"
-                vacancy_url = part_to_parse[i]["alternate_url"] \
-                    if part_to_parse[i]["alternate_url"] is not None else "0"
+                company_name = part_to_parse[i]["employer"]["name"] if part_to_parse[i]["employer"]["name"] is not None else "0"
+                vacancy_url = part_to_parse[i]["alternate_url"] if part_to_parse[i]["alternate_url"] is not None else "0"
                 vacancy = Vacancy(vacancy_name, [min_salary, max_salary], company_name, vacancy_url, None)
                 vacancies.append(vacancy)
         return vacancies
-
-

@@ -1,13 +1,24 @@
-import psycopg2
+import configparser
 
 import psycopg2
 
 
 class DBManager:
-    _host = "localhost"
-    _database = "kw5"
-    _user = "myuser"
-    _password = "mypass"
+    @classmethod
+    def _get_db_config(cls):
+        """
+        Чтение конфигурации для подключения к базе данных из файла database.ini.
+        """
+        config = configparser.ConfigParser()
+        config.read('/home/irinka/PycharmProjects/KW5/src/database.ini')
+
+        db_config = {
+            'host': config.get('database', 'host'),
+            'database': config.get('database', 'database'),
+            'user': config.get('database', 'user'),
+            'password': config.get('database', 'password')
+        }
+        return db_config
 
     @classmethod
     def connect(cls):
@@ -15,11 +26,12 @@ class DBManager:
         Метод подключения к базе данных PostgreSQL.
         """
         try:
+            db_config = cls._get_db_config()
             connection = psycopg2.connect(
-                host=cls._host,
-                user=cls._user,
-                password=cls._password,
-                dbname=cls._database
+                host=db_config['host'],
+                user=db_config['user'],
+                password=db_config['password'],
+                dbname=db_config['database']
             )
             print("Успешное подключение к базе данных.")
             return connection
