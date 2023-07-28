@@ -9,8 +9,12 @@ readme = "README.md"
 python = "^3.10"
 psycopg2-binary = "^2.9.6"
 requests = "^2.31.0"
+configparser = "^5.0"
 
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+
+
